@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import templates
+from app import templates
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(

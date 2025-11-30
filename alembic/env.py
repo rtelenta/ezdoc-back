@@ -26,10 +26,11 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# You'll need to import your Base and models here when you create them
-# from app.db.base import Base
-# target_metadata = Base.metadata
-target_metadata = None
+from app.db.base import Base
+# Import all models so they're registered with SQLAlchemy
+from app.templates.models import Template
+
+target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

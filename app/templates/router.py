@@ -7,7 +7,7 @@ from uuid import UUID
 from app.db.session import get_db
 from app.templates import repositories as template_repositories
 from app.templates import schemas as template_schemas
-from app.templates.document_processor import process_docx_from_base64
+from app.templates.utils.document_processor import process_docx_from_base64
 
 router = APIRouter()
 PREFIX = "/templates"
@@ -91,17 +91,9 @@ def view_template_as_pdf(template_id: UUID, db: Session = Depends(get_db)):
         )
 
     except Exception as e:
-        # Handle specific error types
         error_msg = str(e)
-        if "LibreOffice" in error_msg:
-            raise HTTPException(
-                status_code=500,
-                detail="LibreOffice not installed. Install with: sudo apt install libreoffice --no-install-recommends",
-            )
-        elif "base64" in error_msg.lower():
-            raise HTTPException(
-                status_code=400, detail="Invalid base64 content in template"
-            )
+        if "base64" in error_msg.lower():
+            raise HTTPException(status_code=400, detail="Invalid template")
         else:
             raise HTTPException(
                 status_code=500, detail=f"Document processing failed: {error_msg}"

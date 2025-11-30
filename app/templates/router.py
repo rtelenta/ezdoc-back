@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
@@ -6,6 +7,7 @@ from uuid import UUID
 from app.db.session import get_db
 from app.templates import repositories as template_repositories
 from app.templates import schemas as template_schemas
+from app.templates.document_processor import process_docx_from_base64
 
 router = APIRouter()
 PREFIX = "/templates"
@@ -55,3 +57,52 @@ def cleanup_expired_debug_records(db: Session = Depends(get_db)):
     """Manual cleanup of expired debug records"""
     deleted_count = template_repositories.cleanup_expired_debug_records(db=db)
     return {"message": f"Cleaned up {deleted_count} expired debug records"}
+
+
+@router.get("/view/{template_id}")
+def view_template_as_pdf(template_id: UUID, db: Session = Depends(get_db)):
+    """
+    Process template with its data and return as PDF.
+
+    This endpoint:
+    1. Retrieves the template by ID
+    2. Decodes the base64 Word document content
+    3. Processes the template with the stored JSON data
+    4. Converts to PDF and returns it
+    """
+    # Get the template from database
+    template = template_repositories.get_template(db=db, template_id=str(template_id))
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found or expired")
+
+    try:
+        # Process the document: base64 content + JSON data -> PDF
+        pdf_content = process_docx_from_base64(
+            base64_content=template.content, data=template.data
+        )
+
+        # Return PDF as response
+        return Response(
+            content=pdf_content,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename=template_{template_id}.pdf"
+            },
+        )
+
+    except Exception as e:
+        # Handle specific error types
+        error_msg = str(e)
+        if "LibreOffice" in error_msg:
+            raise HTTPException(
+                status_code=500,
+                detail="LibreOffice not installed. Install with: sudo apt install libreoffice --no-install-recommends",
+            )
+        elif "base64" in error_msg.lower():
+            raise HTTPException(
+                status_code=400, detail="Invalid base64 content in template"
+            )
+        else:
+            raise HTTPException(
+                status_code=500, detail=f"Document processing failed: {error_msg}"
+            )

@@ -6,6 +6,7 @@ from app.config import API_URL
 
 
 class TemplateCreate(BaseModel):
+    name: str  # Template name
     content: str  # Base64 encoded Word file content
     data: Dict[str, Any]  # Flexible JSON structure
     debug: bool = False
@@ -14,7 +15,9 @@ class TemplateCreate(BaseModel):
 
 class TemplateRetrieve(BaseModel):
     id: UUID
+    name: str
     debug: bool
+    created_by_user_id: str
     created_at: datetime
     expires_at: Optional[datetime] = None
 
@@ -31,6 +34,7 @@ class TemplateRetrieve(BaseModel):
 
 
 class TemplateUpdate(BaseModel):
+    name: Optional[str] = None
     content: Optional[str] = None
     data: Optional[Dict[str, Any]] = None
     debug: Optional[bool] = None

@@ -23,7 +23,9 @@ def create_template(
 ):
     """Create a new template (permanent or temporary based on debug flag)"""
     # User is automatically authenticated and created in DB on first request
-    return template_repositories.create_template(db=db, template=template)
+    return template_repositories.create_template(
+        db=db, template=template, user_id=current_user.cognito_user_id
+    )
 
 
 @router.get("/view/{template_id}")

@@ -6,7 +6,9 @@ from app.templates.models import Template
 from app.templates import schemas as template_schema
 
 
-def create_template(db: Session, template: template_schema.TemplateCreate) -> Template:
+def create_template(
+    db: Session, template: template_schema.TemplateCreate, user_id: str
+) -> Template:
     """Create a new template (permanent or temporary based on debug flag)"""
     expires_at = None
     if template.debug:
@@ -15,9 +17,11 @@ def create_template(db: Session, template: template_schema.TemplateCreate) -> Te
         )
 
     db_template = Template(
+        name=template.name,
         content=template.content,
         data=template.data,
         debug=template.debug,
+        created_by_user_id=user_id,
         expires_at=expires_at,
     )
 

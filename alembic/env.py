@@ -27,8 +27,10 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 from app.db.base import Base
+
 # Import all models so they're registered with SQLAlchemy
 from app.templates.models import Template
+from app.users.models import User
 
 target_metadata = Base.metadata
 

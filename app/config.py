@@ -6,3 +6,7 @@ if os.getenv("ENV", "development") == "development":
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 API_URL = os.getenv("API_URL")
+
+COGNITO_REGION = os.getenv("COGNITO_REGION")
+COGNITO_USER_POOL_ID = os.getenv("COGNITO_USER_POOL_ID")
+COGNITO_APP_CLIENT_ID = os.getenv("COGNITO_APP_CLIENT_ID")

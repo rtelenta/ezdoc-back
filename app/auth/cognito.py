@@ -53,7 +53,10 @@ def verify_cognito_token(
             algorithms=["RS256"],
             audience=COGNITO_APP_CLIENT_ID,
             issuer=f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/{COGNITO_USER_POOL_ID}",
-            options={"verify_exp": True},  # Verify token hasn't expired
+            options={
+                "verify_exp": True,  # Verify token hasn't expired
+                "verify_at_hash": False,  # Skip at_hash validation (requires access_token)
+            },
         )
 
         return claims
@@ -94,13 +97,23 @@ def get_current_user(
     """
     # Extract user information from JWT claims
     cognito_user_id = claims.get("sub")  # Unique Cognito user ID
-    email = claims.get("email")
+
+    # Access tokens have 'username', ID tokens have 'email' and 'name'
+    email = claims.get("email") or claims.get(
+        "username"
+    )  # Fallback to username for access tokens
     name = claims.get("name")
 
-    if not cognito_user_id or not email:
+    if not cognito_user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token missing required user information",
+            detail="Token missing user ID (sub claim)",
+        )
+
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token missing email or username",
         )
 
     # Get or create user in database (automatic registration on first API call)

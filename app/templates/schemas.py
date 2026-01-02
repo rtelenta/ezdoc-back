@@ -24,7 +24,7 @@ class TemplateRetrieve(BaseModel):
         """Generate view link using API_URL + /view/ + template_id"""
         base_url = API_URL
 
-        return f"{base_url}/view/{self.id}"
+        return f"{base_url}/templates/view/{self.id}"
 
     class Config:
         from_attributes = True

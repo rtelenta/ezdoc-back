@@ -17,7 +17,7 @@ class Template(Base):
     )
     name = Column(String(255), nullable=False, index=True)
     content = Column(Text, nullable=False)  # Base64 encoded Word file
-    data = Column(JSON, nullable=False)  # JSON with flexible structure
+    data = Column(JSON, nullable=True)  # JSON with flexible structure
     debug = Column(Boolean, default=False, nullable=False, index=True)
     created_by_user_id = Column(
         String, ForeignKey("users.cognito_user_id"), nullable=False, index=True

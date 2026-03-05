@@ -18,7 +18,7 @@ class UserInfo(BaseModel):
 class TemplateCreate(BaseModel):
     name: str  # Template name
     content: str  # Base64 encoded Word file content
-    data: Dict[str, Any]  # Flexible JSON structure
+    data: Optional[Dict[str, Any]] = None  # Flexible JSON structure
     debug: bool = False
     expire_hours: Optional[int] = 2  # Only used when debug=True
 

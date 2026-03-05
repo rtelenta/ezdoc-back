@@ -141,10 +141,3 @@ def delete_template(
     if template_repositories.delete_template(db=db, template_id=str(template_id)):
         return {"message": "Template deleted successfully"}
     raise HTTPException(status_code=404, detail="Template not found")
-
-
-@router.post("/cleanup-expired")
-def cleanup_expired_debug_records(db: Session = Depends(get_db)):
-    """Manual cleanup of expired debug records"""
-    deleted_count = template_repositories.cleanup_expired_debug_records(db=db)
-    return {"message": f"Cleaned up {deleted_count} expired debug records"}

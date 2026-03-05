@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_
 from app.templates.models import Template
 from app.templates import schemas as template_schema
@@ -28,12 +28,23 @@ def create_template(
     db.add(db_template)
     db.commit()
     db.refresh(db_template)
+    # Eagerly load the created_by relationship
+    db_template = (
+        db.query(Template)
+        .options(joinedload(Template.created_by))
+        .filter(Template.id == db_template.id)
+        .first()
+    )
     return db_template
 
 
 def get_template(db: Session, template_id: str) -> Optional[Template]:
     """Get a template by ID, excluding expired debug records"""
-    query = db.query(Template).filter(Template.id == template_id)
+    query = (
+        db.query(Template)
+        .options(joinedload(Template.created_by))
+        .filter(Template.id == template_id)
+    )
 
     # Add expiration filter for debug records
     query = query.filter(
@@ -54,7 +65,7 @@ def get_templates(
     db: Session, include_debug: bool = False, skip: int = 0, limit: int = 100
 ) -> List[Template]:
     """Get templates with optional debug filtering"""
-    query = db.query(Template)
+    query = db.query(Template).options(joinedload(Template.created_by))
 
     if not include_debug:
         # Only permanent records

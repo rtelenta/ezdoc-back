@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
 from app.db.session import get_db
@@ -9,7 +9,10 @@ from app.templates import repositories as template_repositories
 from app.templates import schemas as template_schemas
 from app.templates.utils.document_processor import process_docx_from_base64
 from app.auth.cognito import get_current_user
+from app.auth.view_token import create_view_token
+from app.auth.view_dependencies import get_user_for_view
 from app.users.models import User
+from app.config import API_URL
 
 router = APIRouter()
 PREFIX = "/templates"
@@ -28,11 +31,37 @@ def create_template(
     )
 
 
+@router.post("/{template_id}/generate-temporal-view")
+def generate_temporal_view_token(
+    template_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Generate a temporary token for viewing a template PDF"""
+    # Verify template exists and user has access
+    template = template_repositories.get_template(db=db, template_id=str(template_id))
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found or expired")
+
+    # Generate token
+    token = create_view_token(
+        template_id=str(template_id), user_id=current_user.cognito_user_id
+    )
+
+    base_url = API_URL
+
+    return {
+        "token": token,
+        "view_url": f"{base_url}/templates/view/{template_id}?token={token}",
+        "expires_in_minutes": 15,
+    }
+
+
 @router.get("/view/{template_id}")
 def view_template_as_pdf(
     template_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    user_id: str = Depends(get_user_for_view),
 ):
     """
     Process template with its data and return as PDF.
@@ -42,6 +71,8 @@ def view_template_as_pdf(
     2. Decodes the base64 Word document content
     3. Processes the template with the stored JSON data
     4. Converts to PDF and returns it
+
+    Authentication: Either Bearer token OR temporary view token as query parameter
     """
     # Get the template from database
     template = template_repositories.get_template(db=db, template_id=str(template_id))

@@ -1,8 +1,18 @@
 from typing import Optional, Dict, Any
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel
 from datetime import datetime
 from uuid import UUID
-from app.config import API_URL
+
+
+class UserInfo(BaseModel):
+    """User information embedded in template response"""
+
+    cognito_user_id: str
+    email: str
+    full_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 
 class TemplateCreate(BaseModel):
@@ -17,17 +27,9 @@ class TemplateRetrieve(BaseModel):
     id: UUID
     name: str
     debug: bool
-    created_by_user_id: str
+    created_by: UserInfo  # Nested user information
     created_at: datetime
     expires_at: Optional[datetime] = None
-
-    @computed_field
-    @property
-    def view_link(self) -> str:
-        """Generate view link using API_URL + /view/ + template_id"""
-        base_url = API_URL
-
-        return f"{base_url}/templates/view/{self.id}"
 
     class Config:
         from_attributes = True

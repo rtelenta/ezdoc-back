@@ -50,3 +50,7 @@ coverage.xml
 
 # macOS
 .DS_Store
+
+# Lambda deployment
+lambda_package/
+ezdoc-lambda.zip

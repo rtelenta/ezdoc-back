@@ -38,12 +38,13 @@ def create_template(
     return db_template
 
 
-def get_template(db: Session, template_id: str) -> Optional[Template]:
-    """Get a template by ID, excluding expired debug records"""
+def get_template(db: Session, template_id: str, user_id: str) -> Optional[Template]:
+    """Get a template by ID for a specific user, excluding expired debug records"""
     query = (
         db.query(Template)
         .options(joinedload(Template.created_by))
         .filter(Template.id == template_id)
+        .filter(Template.created_by_user_id == user_id)  # Filter by user
     )
 
     # Add expiration filter for debug records
@@ -62,10 +63,17 @@ def get_template(db: Session, template_id: str) -> Optional[Template]:
 
 
 def get_templates(
-    db: Session, include_debug: bool = False, skip: int = 0, limit: int = 100
+    db: Session,
+    user_id: str,
+    include_debug: bool = False,
+    skip: int = 0,
+    limit: int = 100,
 ) -> List[Template]:
-    """Get templates with optional debug filtering"""
+    """Get templates for a specific user with optional debug filtering"""
     query = db.query(Template).options(joinedload(Template.created_by))
+
+    # Filter by user
+    query = query.filter(Template.created_by_user_id == user_id)
 
     if not include_debug:
         # Only permanent records
@@ -102,9 +110,16 @@ def cleanup_expired_debug_records(db: Session) -> int:
     return expired_count
 
 
-def delete_template(db: Session, template_id: str) -> bool:
-    """Delete a template by ID"""
-    template = db.query(Template).filter(Template.id == template_id).first()
+def delete_template(db: Session, template_id: str, user_id: str) -> bool:
+    """Delete a template by ID for a specific user. Returns True if deleted, False if not found."""
+    template = (
+        db.query(Template)
+        .filter(Template.id == template_id)
+        .filter(
+            Template.created_by_user_id == user_id
+        )  # Only allow deleting own templates
+        .first()
+    )
     if template:
         db.delete(template)
         db.commit()

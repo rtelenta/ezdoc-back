@@ -32,8 +32,10 @@ def get_template(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get a template by ID (excludes expired debug records)"""
-    template = template_repositories.get_template(db=db, template_id=str(template_id))
+    """Get a template by ID (excludes expired debug records, user-specific)"""
+    template = template_repositories.get_template(
+        db=db, template_id=str(template_id), user_id=current_user.cognito_user_id
+    )
     if not template:
         raise HTTPException(status_code=404, detail="Template not found or expired")
     return template
@@ -47,9 +49,13 @@ def get_templates(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get templates with optional debug filtering"""
+    """Get templates with optional debug filtering (user-specific)"""
     return template_repositories.get_templates(
-        db=db, include_debug=include_debug, skip=skip, limit=limit
+        db=db,
+        user_id=current_user.cognito_user_id,
+        include_debug=include_debug,
+        skip=skip,
+        limit=limit,
     )
 
 
@@ -59,7 +65,9 @@ def delete_template(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Delete a template by ID"""
-    if template_repositories.delete_template(db=db, template_id=str(template_id)):
+    """Delete a template by ID (user-specific)"""
+    if template_repositories.delete_template(
+        db=db, template_id=str(template_id), user_id=current_user.cognito_user_id
+    ):
         return {"message": "Template deleted successfully"}
     raise HTTPException(status_code=404, detail="Template not found")

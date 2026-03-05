@@ -36,9 +36,11 @@ def create_document(
     3. Stores the document with template content, data, and token
     4. Returns a view URL with the token
     """
-    # Get the template
+    # Get the template (user-specific)
     template = template_repositories.get_template(
-        db=db, template_id=str(document.template_id)
+        db=db,
+        template_id=str(document.template_id),
+        user_id=current_user.cognito_user_id,
     )
     if not template:
         raise HTTPException(status_code=404, detail="Template not found or expired")

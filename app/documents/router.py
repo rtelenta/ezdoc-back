@@ -9,7 +9,7 @@ from app.db.session import get_db
 from app.documents import repositories as document_repositories
 from app.documents import schemas as document_schemas
 from app.templates import repositories as template_repositories
-from app.templates.utils.document_processor import process_docx_from_base64
+from app.documents.utils.document_processor import process_docx_from_base64
 from app.auth.cognito import get_current_user
 from app.users.models import User
 from app.config import API_URL

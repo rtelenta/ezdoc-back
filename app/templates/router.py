@@ -7,7 +7,7 @@ from uuid import UUID
 from app.db.session import get_db
 from app.templates import repositories as template_repositories
 from app.templates import schemas as template_schemas
-from app.templates.utils.document_processor import process_docx_from_base64
+from app.documents.utils.document_processor import process_docx_from_base64
 from app.auth.cognito import get_current_user
 from app.auth.view_token import create_view_token
 from app.auth.view_dependencies import get_user_for_view

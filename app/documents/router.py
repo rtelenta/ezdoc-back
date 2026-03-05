@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
+from typing import List
 from uuid import UUID
 from datetime import datetime, timedelta, timezone
 import base64
@@ -19,9 +20,7 @@ router = APIRouter()
 PREFIX = "/documents"
 
 
-@router.post(
-    "/", response_model=document_schemas.DocumentCreateResponse, status_code=201
-)
+@router.post("/", response_model=document_schemas.DocumentResponse, status_code=201)
 def create_document(
     document: document_schemas.DocumentCreate,
     db: Session = Depends(get_db),
@@ -34,7 +33,7 @@ def create_document(
     1. Retrieves the template content by template_id
     2. Generates a unique view token for the document
     3. Stores the document with template content, data, and token
-    4. Returns a view URL with the token
+    4. Returns the document info with view URL
     """
     # Get the template (user-specific)
     template = template_repositories.get_template(
@@ -77,7 +76,37 @@ def create_document(
     base_url = API_URL
     view_url = f"{base_url}/documents/view?token={token}"
 
-    return document_schemas.DocumentCreateResponse(view_url=view_url)
+    return document_schemas.DocumentResponse(
+        id=db_document.id,
+        description=db_document.description,
+        created_at=db_document.created_at,
+        view_url=view_url,
+    )
+
+
+@router.get("/", response_model=List[document_schemas.DocumentResponse])
+def get_documents(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get all documents for the current user (non-expired only)"""
+    documents = document_repositories.get_documents(
+        db=db, user_id=current_user.cognito_user_id, skip=skip, limit=limit
+    )
+
+    # Build response with view URLs
+    base_url = API_URL
+    return [
+        document_schemas.DocumentResponse(
+            id=doc.id,
+            description=doc.description,
+            created_at=doc.created_at,
+            view_url=f"{base_url}/documents/view?token={doc.token}",
+        )
+        for doc in documents
+    ]
 
 
 @router.get("/view")

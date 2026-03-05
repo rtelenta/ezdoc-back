@@ -22,5 +22,11 @@ class DocumentRetrieve(BaseModel):
         from_attributes = True
 
 
-class DocumentCreateResponse(BaseModel):
+class DocumentResponse(BaseModel):
+    id: UUID
+    description: Optional[str] = None
+    created_at: datetime
     view_url: str
+
+    class Config:
+        from_attributes = True

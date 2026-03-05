@@ -24,10 +24,8 @@ class Document(Base):
     )  # Generated view token
     description = Column(Text, nullable=True)  # Optional description
 
-    # Reference to original template
-    template_id = Column(
-        UUID(as_uuid=True), ForeignKey("templates.id"), nullable=False, index=True
-    )
+    # Reference to original template (string ID, no FK constraint)
+    template_id = Column(String, nullable=False, index=True)
 
     # User tracking
     created_by_user_id = Column(
@@ -44,4 +42,3 @@ class Document(Base):
 
     # Relationships
     created_by = relationship("User", foreign_keys=[created_by_user_id])
-    template_ref = relationship("Template", foreign_keys=[template_id])

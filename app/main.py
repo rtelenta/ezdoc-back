@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.templates.router import router as templates_router, PREFIX as templates_prefix
 from app.users.router import router as users_router, PREFIX as users_prefix
+from app.documents.router import router as documents_router, PREFIX as documents_prefix
 
 app = FastAPI(
     title="Ezdoc API",
@@ -24,6 +25,10 @@ app.include_router(
 )
 
 app.include_router(users_router, prefix=f"{API_PREFIX}{users_prefix}", tags=["Users"])
+
+app.include_router(
+    documents_router, prefix=f"{API_PREFIX}{documents_prefix}", tags=["Documents"]
+)
 
 
 @app.get("/", tags=["Root"])

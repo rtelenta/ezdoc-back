@@ -31,6 +31,7 @@ from app.db.base import Base
 # Import all models so they're registered with SQLAlchemy
 from app.templates.models import Template
 from app.users.models import User
+from app.documents.models import Document
 
 target_metadata = Base.metadata
 

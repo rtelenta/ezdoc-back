@@ -1,0 +1,88 @@
+name: Deploy to AWS Lambda
+
+on:
+  workflow_dispatch: # Manual deployment only
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+
+      - name: Create deployment package
+        run: |
+          echo "🚀 Creating Lambda deployment package..."
+
+          # Configuration
+          PACKAGE_DIR="lambda_package"
+          ZIP_FILE="ezdoc-lambda.zip"
+
+          # Clean up previous builds
+          rm -rf $PACKAGE_DIR
+          rm -f $ZIP_FILE
+
+          # Create package directory
+          mkdir -p $PACKAGE_DIR
+
+          # Export dependencies from Poetry
+          poetry export -f requirements.txt --output temp_requirements.txt --without-hashes --without-urls
+
+          # Install dependencies
+          pip install -r temp_requirements.txt -t $PACKAGE_DIR --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all: --upgrade
+          rm temp_requirements.txt
+
+          # Copy application code
+          cp -r app $PACKAGE_DIR/
+          cp lambda_handler.py $PACKAGE_DIR/
+          cp lambda_function.py $PACKAGE_DIR/
+          cp alembic.ini $PACKAGE_DIR/ 2>/dev/null || true
+          cp -r alembic $PACKAGE_DIR/ 2>/dev/null || true
+
+          # Remove unnecessary files
+          cd $PACKAGE_DIR
+          find . -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          find . -type f -name "*.pyc" -delete 2>/dev/null || true
+          find . -type f -name "*.pyo" -delete 2>/dev/null || true
+          find . -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
+
+          # Create zip file
+          zip -r ../$ZIP_FILE . -q
+          cd ..
+
+          PACKAGE_SIZE=$(du -h $ZIP_FILE | cut -f1)
+          echo "✅ Package created: $ZIP_FILE (Size: $PACKAGE_SIZE)"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to Lambda
+        run: |
+          echo "🚀 Deploying to Lambda function: ${{ env.LAMBDA_FUNCTION_NAME }}"
+
+          aws lambda update-function-code \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --zip-file fileb://ezdoc-lambda.zip \
+            --no-cli-pager
+
+          echo "⏳ Waiting for Lambda update to complete..."
+          aws lambda wait function-updated \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }}
+
+          echo "✅ Deployment successful!"

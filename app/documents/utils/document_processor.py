@@ -112,35 +112,51 @@ def get_libreoffice_path() -> str:
     Returns:
         Path to LibreOffice executable
     """
-    # Check for already extracted LibreOffice in /tmp (Lambda warm start)
-    # The tar extracts to /tmp/instdir/ not /tmp/lo/instdir/
+    # Marker file to indicate successful extraction
+    extraction_marker = "/tmp/.libreoffice_ready"
+
+    # Check for already extracted and validated LibreOffice in /tmp (Lambda warm start)
+    # The tar extracts to /tmp/instdir/
     common_paths = [
         "/tmp/instdir/program/soffice.bin",
         "/tmp/lo/instdir/program/soffice.bin",
         "/tmp/opt/libreoffice/program/soffice.bin",
     ]
 
-    for extracted_path in common_paths:
-        if os.path.exists(extracted_path):
-            logger.info(f"Using previously extracted LibreOffice at: {extracted_path}")
-            return extracted_path
+    # Only use cached extraction if marker exists (indicates successful previous extraction)
+    if os.path.exists(extraction_marker):
+        for extracted_path in common_paths:
+            if os.path.exists(extracted_path) and os.access(extracted_path, os.X_OK):
+                logger.info(
+                    f"Using previously extracted LibreOffice at: {extracted_path}"
+                )
+                return extracted_path
+
+        # Marker exists but binary not found - extraction was incomplete, clean up
+        logger.warning(
+            "Extraction marker found but binary missing, cleaning up stale extraction..."
+        )
+        try:
+            os.remove(extraction_marker)
+            if os.path.exists("/tmp/instdir"):
+                import shutil
+
+                shutil.rmtree("/tmp/instdir", ignore_errors=True)
+        except Exception as e:
+            logger.warning(f"Failed to clean up stale extraction: {e}")
 
     # Check if brotli-compressed LibreOffice layer exists
     brotli_archive = "/opt/lo.tar.br"
     if os.path.exists(brotli_archive):
-        # Check if instdir already exists from previous extraction
-        if os.path.exists("/tmp/instdir"):
-            logger.info("LibreOffice already extracted to /tmp/instdir, reusing...")
-            # Search for the binary
-            for root, dirs, files in os.walk("/tmp/instdir"):
-                if "soffice.bin" in files:
-                    found_path = os.path.join(root, "soffice.bin")
-                    logger.info(f"Found soffice.bin at: {found_path}")
-                    return found_path
-                if "soffice" in files:
-                    found_path = os.path.join(root, "soffice")
-                    logger.info(f"Found soffice at: {found_path}")
-                    return found_path
+        # Clean up any incomplete extractions before starting
+        if os.path.exists("/tmp/instdir") and not os.path.exists(extraction_marker):
+            logger.info("Found incomplete extraction, cleaning up...")
+            try:
+                import shutil
+
+                shutil.rmtree("/tmp/instdir", ignore_errors=True)
+            except Exception as e:
+                logger.warning(f"Failed to clean up incomplete extraction: {e}")
 
         logger.info(f"Found brotli-compressed LibreOffice layer, extracting...")
         try:
@@ -189,6 +205,15 @@ def get_libreoffice_path() -> str:
                 for binary_path in common_binary_paths:
                     if os.path.exists(binary_path):
                         logger.info(f"Found LibreOffice binary at: {binary_path}")
+                        # Create marker file to indicate successful extraction
+                        try:
+                            with open(extraction_marker, "w") as f:
+                                f.write("ready")
+                            logger.info(
+                                "Created extraction marker for future cold starts"
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to create extraction marker: {e}")
                         return binary_path
 
                 # If not in common locations, search recursively
@@ -197,10 +222,22 @@ def get_libreoffice_path() -> str:
                     if "soffice.bin" in files:
                         found_path = os.path.join(root, "soffice.bin")
                         logger.info(f"Found soffice.bin at: {found_path}")
+                        # Create marker file
+                        try:
+                            with open(extraction_marker, "w") as f:
+                                f.write("ready")
+                        except Exception as e:
+                            logger.warning(f"Failed to create extraction marker: {e}")
                         return found_path
                     if "soffice" in files and "soffice.bin" not in files:
                         found_path = os.path.join(root, "soffice")
                         logger.info(f"Found soffice at: {found_path}")
+                        # Create marker file
+                        try:
+                            with open(extraction_marker, "w") as f:
+                                f.write("ready")
+                        except Exception as e:
+                            logger.warning(f"Failed to create extraction marker: {e}")
                         return found_path
 
                 logger.error("Could not find soffice.bin or soffice in /tmp/instdir")
@@ -325,16 +362,21 @@ def convert_docx_to_pdf(docx_path: str, pdf_path: str):
         logger.info(f"Using LibreOffice at: {libreoffice_cmd}")
 
         # Detect if running in AWS Lambda
-        is_lambda = os.environ.get("AWS_EXECUTION_ENV") is not None or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") is not None
-        
+        is_lambda = (
+            os.environ.get("AWS_EXECUTION_ENV") is not None
+            or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") is not None
+        )
+
         # Set up environment variables
         env = os.environ.copy()
-        
+
         if is_lambda:
-            logger.info("Running in AWS Lambda environment, applying Lambda-specific settings")
+            logger.info(
+                "Running in AWS Lambda environment, applying Lambda-specific settings"
+            )
             # Set up fontconfig for Lambda (prevents fontconfig warnings)
             setup_fontconfig_for_lambda()
-            
+
             # Lambda-specific environment variables
             env.update(
                 {

@@ -61,13 +61,16 @@ jobs:
           cp alembic.ini $PACKAGE_DIR/ 2>/dev/null || true
           cp -r alembic $PACKAGE_DIR/ 2>/dev/null || true
 
-          # Remove unnecessary files
+          # Remove unnecessary files (keep .dist-info for package metadata)
           cd $PACKAGE_DIR
           find . -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
           find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
           find . -type f -name "*.pyc" -delete 2>/dev/null || true
           find . -type f -name "*.pyo" -delete 2>/dev/null || true
-          find . -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
+
+          # Remove large unnecessary files to reduce package size
+          find . -type f -name "*.so.debug" -delete 2>/dev/null || true
+          find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
 
           # Create zip file
           zip -r ../$ZIP_FILE . -q

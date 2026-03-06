@@ -43,14 +43,18 @@ jobs:
           # Create package directory
           mkdir -p $PACKAGE_DIR
 
-          # Export dependencies from Poetry
-          poetry export -f requirements.txt --output temp_requirements.txt --without-hashes --without-urls
+          # Install dependencies directly to package directory
+          # Using poetry install with --compile is more reliable than export + pip
+          echo "📦 Installing dependencies..."
+          poetry install --only main --no-root --compile
 
-          # Install dependencies
-          pip install -r temp_requirements.txt -t $PACKAGE_DIR --platform manylinux2014_x86_64 --python-version 3.13 --only-binary=:all: --upgrade
-          rm temp_requirements.txt
+          # Copy installed packages from virtual env to package directory
+          echo "📋 Copying dependencies from virtual environment..."
+          VENV_SITE_PACKAGES=$(poetry run python -c "import site; print(site.getsitepackages()[0])")
+          cp -r $VENV_SITE_PACKAGES/* $PACKAGE_DIR/
 
           # Copy application code
+          echo "📋 Copying application code..."
           cp -r app $PACKAGE_DIR/
           cp lambda_handler.py $PACKAGE_DIR/
           cp lambda_function.py $PACKAGE_DIR/

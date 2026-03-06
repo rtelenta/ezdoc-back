@@ -3,6 +3,10 @@ name: Deploy to AWS Lambda
 on:
   workflow_dispatch: # Manual deployment only
 
+env:
+  AWS_REGION: us-east-1
+  LAMBDA_FUNCTION_NAME: ezdoc-back
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -20,6 +24,9 @@ jobs:
         uses: snok/install-poetry@v1
         with:
           version: latest
+
+      - name: Install Poetry Export Plugin
+        run: poetry self add poetry-plugin-export
 
       - name: Create deployment package
         run: |
